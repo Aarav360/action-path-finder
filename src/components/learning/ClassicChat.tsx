@@ -3,7 +3,6 @@ import React, { useState } from 'react';
 import { useTreeLearning } from '@/contexts/TreeLearningContext';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Card } from '@/components/ui/card';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Send, Plus } from 'lucide-react';
 
@@ -45,57 +44,67 @@ export const ClassicChat = () => {
   };
 
   return (
-    <div className="flex flex-col h-[calc(100vh-300px)]">
-      <div className="border-b p-4">
-        <h2 className="text-xl font-semibold">Classic Learning Mode</h2>
-        <p className="text-gray-600">Traditional chat interface with full conversation history</p>
-      </div>
-
-      <ScrollArea className="flex-1 p-4">
-        <div className="space-y-4 max-w-4xl">
-          {messages.map((message) => {
-            const contextNode = getNodeContext(message.nodeId);
-            
-            return (
-              <div key={message.id}>
-                {contextNode && message.role === 'assistant' && (
-                  <div className="text-xs text-blue-600 font-medium mb-2 ml-12">
-                    📍 Context Node: {contextNode}
-                  </div>
-                )}
-                
-                <Card className={`p-4 ${
-                  message.role === 'user' 
-                    ? 'ml-12 bg-blue-50 border-blue-200' 
-                    : 'mr-12 bg-gray-50'
-                }`}>
-                  <div className="flex items-start gap-3">
-                    <div className={`w-10 h-10 rounded-full flex items-center justify-center font-medium ${
-                      message.role === 'user' 
-                        ? 'bg-blue-500 text-white' 
-                        : 'bg-gray-600 text-white'
-                    }`}>
-                      {message.role === 'user' ? 'You' : 'AI'}
+    <div className="flex flex-col h-screen bg-gray-50">
+      {/* Chat messages area */}
+      <ScrollArea className="flex-1 px-4">
+        <div className="max-w-4xl mx-auto py-8">
+          {messages.length === 0 && (
+            <div className="text-center py-20">
+              <h2 className="text-2xl font-semibold text-gray-700 mb-4">Welcome to Classic Learning Mode</h2>
+              <p className="text-gray-500 mb-8">Start a conversation to begin your learning journey</p>
+            </div>
+          )}
+          
+          <div className="space-y-6">
+            {messages.map((message) => {
+              const contextNode = getNodeContext(message.nodeId);
+              
+              return (
+                <div key={message.id} className="flex flex-col">
+                  {contextNode && message.role === 'assistant' && (
+                    <div className="text-xs text-blue-600 font-medium mb-2 ml-16">
+                      📍 Context Node: {contextNode}
                     </div>
-                    <div className="flex-1">
-                      <p className="text-sm leading-relaxed">{message.content}</p>
-                      <p className="text-xs text-gray-500 mt-3">
+                  )}
+                  
+                  <div className={`flex gap-4 ${
+                    message.role === 'user' ? 'justify-end' : 'justify-start'
+                  }`}>
+                    {message.role === 'assistant' && (
+                      <div className="w-10 h-10 rounded-full bg-gray-600 text-white flex items-center justify-center font-medium flex-shrink-0">
+                        AI
+                      </div>
+                    )}
+                    
+                    <div className={`max-w-3xl px-6 py-4 rounded-2xl ${
+                      message.role === 'user' 
+                        ? 'bg-blue-600 text-white' 
+                        : 'bg-white border border-gray-200'
+                    }`}>
+                      <p className="text-sm leading-relaxed whitespace-pre-wrap">{message.content}</p>
+                      <p className={`text-xs mt-3 ${
+                        message.role === 'user' ? 'text-blue-100' : 'text-gray-500'
+                      }`}>
                         {message.timestamp.toLocaleTimeString()}
                       </p>
                     </div>
+                    
+                    {message.role === 'user' && (
+                      <div className="w-10 h-10 rounded-full bg-blue-600 text-white flex items-center justify-center font-medium flex-shrink-0">
+                        You
+                      </div>
+                    )}
                   </div>
-                </Card>
-              </div>
-            );
-          })}
-          
-          {isLoading && (
-            <Card className="mr-12 bg-gray-50 p-4">
-              <div className="flex items-start gap-3">
-                <div className="w-10 h-10 rounded-full bg-gray-600 text-white flex items-center justify-center font-medium">
+                </div>
+              );
+            })}
+            
+            {isLoading && (
+              <div className="flex gap-4 justify-start">
+                <div className="w-10 h-10 rounded-full bg-gray-600 text-white flex items-center justify-center font-medium flex-shrink-0">
                   AI
                 </div>
-                <div className="flex-1">
+                <div className="max-w-3xl px-6 py-4 rounded-2xl bg-white border border-gray-200">
                   <div className="flex gap-1">
                     <div className="w-3 h-3 bg-gray-400 rounded-full animate-bounce"></div>
                     <div className="w-3 h-3 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '0.1s' }}></div>
@@ -103,38 +112,44 @@ export const ClassicChat = () => {
                   </div>
                 </div>
               </div>
-            </Card>
-          )}
+            )}
+          </div>
         </div>
       </ScrollArea>
 
-      <div className="border-t p-4">
-        <div className="flex gap-2 max-w-4xl">
-          <Input
-            placeholder={messages.length === 0 ? "What would you like to learn about?" : "Continue the conversation..."}
-            value={input}
-            onChange={(e) => setInput(e.target.value)}
-            onKeyPress={handleKeyPress}
-            disabled={isLoading}
-            className="flex-1"
-          />
-          <Button 
-            onClick={handleSendMessage} 
-            disabled={!input.trim() || isLoading}
-            size="icon"
-          >
-            <Send className="w-4 h-4" />
-          </Button>
-        </div>
-        
-        {messages.length > 0 && (
-          <div className="mt-3 max-w-4xl">
-            <Button variant="outline" size="sm" className="flex items-center gap-2">
-              <Plus className="w-4 h-4" />
-              Expand Tree (Coming Soon)
+      {/* Input area */}
+      <div className="border-t bg-white px-4 py-4">
+        <div className="max-w-4xl mx-auto">
+          <div className="flex gap-3 items-end">
+            <div className="flex-1 relative">
+              <Input
+                placeholder={messages.length === 0 ? "What would you like to learn about?" : "Continue the conversation..."}
+                value={input}
+                onChange={(e) => setInput(e.target.value)}
+                onKeyPress={handleKeyPress}
+                disabled={isLoading}
+                className="min-h-[48px] px-4 py-3 text-base border-gray-300 focus:border-blue-500 focus:ring-blue-500"
+              />
+            </div>
+            <Button 
+              onClick={handleSendMessage} 
+              disabled={!input.trim() || isLoading}
+              size="lg"
+              className="h-12 px-6"
+            >
+              <Send className="w-4 h-4" />
             </Button>
           </div>
-        )}
+          
+          {messages.length > 0 && (
+            <div className="mt-3 flex justify-center">
+              <Button variant="outline" size="sm" className="flex items-center gap-2">
+                <Plus className="w-4 h-4" />
+                Expand Tree (Coming Soon)
+              </Button>
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );
