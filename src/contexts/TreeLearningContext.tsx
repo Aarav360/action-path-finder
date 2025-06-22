@@ -1,4 +1,3 @@
-
 import React, { createContext, useContext, useState, ReactNode } from 'react';
 
 export interface TreeNode {
@@ -52,6 +51,76 @@ export const TreeLearningProvider = ({ children }: { children: ReactNode }) => {
 
   const generateId = () => Math.random().toString(36).substring(2, 15);
 
+  const generateChildConcepts = (parentTitle: string, parentContent: string): string[] => {
+    const concepts: Record<string, string[]> = {};
+    
+    // Define concept mappings for common learning topics
+    if (parentTitle.toLowerCase().includes('coding') || parentTitle.toLowerCase().includes('programming')) {
+      return ['Programming Languages', 'Development Environments', 'Basic Syntax', 'Data Structures', 'Algorithms'];
+    }
+    
+    if (parentTitle.toLowerCase().includes('machine learning') || parentTitle.toLowerCase().includes('ai')) {
+      return ['Supervised Learning', 'Unsupervised Learning', 'Neural Networks', 'Model Training', 'Data Preprocessing'];
+    }
+    
+    if (parentTitle.toLowerCase().includes('mathematics') || parentTitle.toLowerCase().includes('math')) {
+      return ['Algebra', 'Calculus', 'Statistics', 'Geometry', 'Number Theory'];
+    }
+    
+    if (parentTitle.toLowerCase().includes('history')) {
+      return ['Ancient Civilizations', 'Medieval Period', 'Renaissance', 'Industrial Revolution', 'Modern Era'];
+    }
+    
+    if (parentTitle.toLowerCase().includes('science')) {
+      return ['Physics', 'Chemistry', 'Biology', 'Scientific Method', 'Laboratory Techniques'];
+    }
+    
+    if (parentTitle.toLowerCase().includes('language') || parentContent.toLowerCase().includes('language')) {
+      return ['Grammar', 'Vocabulary', 'Pronunciation', 'Writing Skills', 'Conversation Practice'];
+    }
+    
+    // Extract key topics from the content for more specific suggestions
+    const keyTopics = extractKeyTopics(parentContent);
+    if (keyTopics.length > 0) {
+      return keyTopics;
+    }
+    
+    // Default fallback concepts
+    return ['Core Concepts', 'Practical Applications', 'Advanced Topics', 'Common Challenges', 'Best Practices'];
+  };
+
+  const extractKeyTopics = (content: string): string[] => {
+    const topics: string[] = [];
+    const sentences = content.split(/[.!?]+/);
+    
+    sentences.forEach(sentence => {
+      // Look for patterns like "types of", "kinds of", "include", etc.
+      const typePatterns = [
+        /types of ([^,.:;]+)/gi,
+        /kinds of ([^,.:;]+)/gi,
+        /include ([^,.:;]+)/gi,
+        /such as ([^,.:;]+)/gi,
+        /examples are ([^,.:;]+)/gi
+      ];
+      
+      typePatterns.forEach(pattern => {
+        const matches = sentence.match(pattern);
+        if (matches) {
+          matches.forEach(match => {
+            const topic = match.replace(pattern, '$1').trim();
+            if (topic.length > 3 && topic.length < 30) {
+              // Capitalize first letter
+              const formatted = topic.charAt(0).toUpperCase() + topic.slice(1);
+              topics.push(formatted);
+            }
+          });
+        }
+      });
+    });
+    
+    return topics.slice(0, 5); // Limit to 5 topics
+  };
+
   const createRootNode = (question: string, response: string) => {
     const nodeId = generateId();
     const userMessage: ChatMessage = {
@@ -85,27 +154,30 @@ export const TreeLearningProvider = ({ children }: { children: ReactNode }) => {
     setSelectedNodeId(nodeId);
   };
 
-  const createChildNodes = (parentId: string, childTitles: string[]) => {
+  const createChildNodes = (parentId: string, childTitles?: string[]) => {
     const parent = nodes[parentId];
     if (!parent) return;
 
     const newNodes = { ...nodes };
     const childIds: string[] = [];
+    
+    // Generate specific child concepts if not provided
+    const conceptTitles = childTitles || generateChildConcepts(parent.title, parent.description);
 
-    childTitles.forEach((title, index) => {
+    conceptTitles.forEach((title, index) => {
       const childId = generateId();
       childIds.push(childId);
       
       newNodes[childId] = {
         id: childId,
         title,
-        description: `Learn more about ${title}`,
+        description: `Learn more about ${title.toLowerCase()} in the context of ${parent.title.toLowerCase()}`,
         level: parent.level + 1,
         parentId,
         children: [],
         messages: [],
         x: parent.x + 250,
-        y: parent.y - (childTitles.length - 1) * 60 + index * 120,
+        y: parent.y - (conceptTitles.length - 1) * 60 + index * 120,
       };
     });
 
@@ -157,7 +229,7 @@ export const TreeLearningProvider = ({ children }: { children: ReactNode }) => {
       const context = nodeId ? buildContextString(nodeId) : '';
       
       // Simulate API call (replace with actual OpenAI integration)
-      const response = await simulateAIResponse(content, context);
+      const response = await simulateAIResponse(content, context, nodeId);
       
       // Add assistant response
       addMessage({
@@ -205,20 +277,34 @@ export const TreeLearningProvider = ({ children }: { children: ReactNode }) => {
     return context;
   };
 
-  const simulateAIResponse = async (content: string, context: string): Promise<string> => {
+  const simulateAIResponse = async (content: string, context: string, nodeId?: string): Promise<string> => {
     // Simulate API delay
     await new Promise(resolve => setTimeout(resolve, 1000));
     
-    // Simple response simulation - replace with actual OpenAI API call
+    const currentNode = nodeId ? nodes[nodeId] : null;
+    const nodeTopic = currentNode?.title || 'this topic';
+    
+    // Generate more contextually relevant responses
     const responses = [
-      "That's a great question! Let me explain this concept in more detail...",
-      "I understand what you're asking about. Here's how this works...",
-      "This is an important topic. Let me break it down for you...",
-      "Excellent point! This connects to several key concepts...",
+      `Great question about ${nodeTopic.toLowerCase()}! Let me explain this concept in detail. This is fundamental to understanding how these principles work in practice.`,
+      `I understand what you're asking about ${nodeTopic.toLowerCase()}. Here's how this connects to the broader concepts we've been discussing.`,
+      `This is an important aspect of ${nodeTopic.toLowerCase()}. Let me break down the key components and how they relate to each other.`,
+      `Excellent point about ${nodeTopic.toLowerCase()}! This connects to several key principles that are worth exploring further.`,
     ];
     
-    return responses[Math.floor(Math.random() * responses.length)] + 
-           ` Based on our discussion about "${context.split('Node:')[1]?.split('\n')[0] || 'this topic'}", here's what you should know...`;
+    const baseResponse = responses[Math.floor(Math.random() * responses.length)];
+    
+    // Add more specific content based on the node topic
+    let specificContent = '';
+    if (currentNode?.title.toLowerCase().includes('programming') || currentNode?.title.toLowerCase().includes('language')) {
+      specificContent = ' Programming languages can be categorized by their level of abstraction, syntax style, and intended use cases. Each has unique strengths and trade-offs.';
+    } else if (currentNode?.title.toLowerCase().includes('algorithm')) {
+      specificContent = ' Algorithms are step-by-step procedures for solving problems efficiently. The choice of algorithm significantly impacts performance and resource usage.';
+    } else if (currentNode?.title.toLowerCase().includes('data')) {
+      specificContent = ' Data structures organize information in memory to enable efficient access and manipulation. Different structures optimize for different types of operations.';
+    }
+    
+    return baseResponse + specificContent + ' What specific aspect would you like to explore further?';
   };
 
   return (
