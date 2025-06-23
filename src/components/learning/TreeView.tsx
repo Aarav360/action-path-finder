@@ -15,12 +15,11 @@ export const TreeView = ({ onNodeSelect }: TreeViewProps) => {
 
   const nodeEntries = Object.entries(nodes);
 
-  // Calculate positions for nodes to prevent overlaps
+  // Calculate positions for nodes in a pyramid/tree shape
   const calculateNodePositions = () => {
     const positionedNodes: { [key: string]: { x: number; y: number } } = {};
-    const levelWidths: { [level: number]: number } = {};
     
-    // Group nodes by level and parent
+    // Group nodes by level
     const nodesByLevel: { [level: number]: string[] } = {};
     const nodesByParent: { [parentId: string]: string[] } = {};
     
@@ -38,47 +37,55 @@ export const TreeView = ({ onNodeSelect }: TreeViewProps) => {
       }
     });
 
+    const LEVEL_HEIGHT = 200;
+    const BASE_X = 600; // Center point for root node
+    
     // Position nodes level by level
-    Object.keys(nodesByLevel).forEach(levelStr => {
+    Object.keys(nodesByLevel).sort((a, b) => parseInt(a) - parseInt(b)).forEach(levelStr => {
       const level = parseInt(levelStr);
       const nodesAtLevel = nodesByLevel[level];
       
       if (level === 0) {
-        // Root node at center
+        // Root node at center top
         const rootId = nodesAtLevel[0];
-        positionedNodes[rootId] = { x: 400, y: 100 };
-        levelWidths[0] = 1;
+        positionedNodes[rootId] = { x: BASE_X, y: 100 };
       } else {
-        // Group children by their parent
-        const parentGroups: { [parentId: string]: string[] } = {};
+        // For each level, position children under their parents
+        const levelNodes: Array<{ nodeId: string; parentId: string; siblingIndex: number; totalSiblings: number }> = [];
+        
+        // Collect all nodes at this level with their parent info
         nodesAtLevel.forEach(nodeId => {
           const node = nodes[nodeId];
-          if (node.parentId) {
-            if (!parentGroups[node.parentId]) {
-              parentGroups[node.parentId] = [];
-            }
-            parentGroups[node.parentId].push(nodeId);
+          if (node.parentId && nodesByParent[node.parentId]) {
+            const siblings = nodesByParent[node.parentId];
+            const siblingIndex = siblings.indexOf(nodeId);
+            levelNodes.push({
+              nodeId,
+              parentId: node.parentId,
+              siblingIndex,
+              totalSiblings: siblings.length
+            });
           }
         });
-
-        let currentX = 50;
-        Object.keys(parentGroups).forEach(parentId => {
-          const children = parentGroups[parentId];
+        
+        // Position each node based on its parent and sibling position
+        levelNodes.forEach(({ nodeId, parentId, siblingIndex, totalSiblings }) => {
           const parentPos = positionedNodes[parentId];
+          if (!parentPos) return;
           
-          if (parentPos) {
-            // Position children in a horizontal line under their parent
-            const startX = currentX;
-            const spacing = 250;
+          const y = parentPos.y + LEVEL_HEIGHT;
+          
+          if (totalSiblings === 1) {
+            // Single child directly below parent
+            positionedNodes[nodeId] = { x: parentPos.x, y };
+          } else {
+            // Multiple children spread horizontally around parent
+            const spacing = Math.min(200, 400 / Math.max(1, totalSiblings - 1));
+            const totalWidth = spacing * (totalSiblings - 1);
+            const startX = parentPos.x - totalWidth / 2;
+            const x = startX + (siblingIndex * spacing);
             
-            children.forEach((childId, index) => {
-              positionedNodes[childId] = {
-                x: startX + (index * spacing),
-                y: parentPos.y + 150
-              };
-            });
-            
-            currentX = startX + (children.length * spacing) + 100; // Add gap between parent groups
+            positionedNodes[nodeId] = { x, y };
           }
         });
       }
@@ -115,10 +122,13 @@ export const TreeView = ({ onNodeSelect }: TreeViewProps) => {
       
       if (!parentPos || !childPos) return null;
 
+      // Create a smooth curved line from parent to child
+      const midY = parentPos.y + (childPos.y - parentPos.y) * 0.6;
+      
       return (
         <path
           key={`connection-${nodeId}`}
-          d={`M ${parentPos.x + 20} ${parentPos.y + 20} Q ${parentPos.x + 20} ${childPos.y - 50} ${childPos.x + 20} ${childPos.y + 20}`}
+          d={`M ${parentPos.x + 20} ${parentPos.y + 40} Q ${parentPos.x + 20} ${midY} ${childPos.x + 20} ${childPos.y}`}
           stroke="#6b7280"
           strokeWidth="2"
           fill="none"
@@ -140,9 +150,15 @@ export const TreeView = ({ onNodeSelect }: TreeViewProps) => {
     );
   }
 
-  // Calculate canvas bounds based on node positions
-  const canvasWidth = Math.max(1200, Math.max(...Object.values(nodePositions).map(pos => pos.x)) + 300);
-  const canvasHeight = Math.max(800, Math.max(...Object.values(nodePositions).map(pos => pos.y)) + 200);
+  // Calculate canvas bounds based on node positions with padding
+  const positions = Object.values(nodePositions);
+  const minX = Math.min(...positions.map(pos => pos.x)) - 200;
+  const maxX = Math.max(...positions.map(pos => pos.x)) + 400;
+  const minY = Math.min(...positions.map(pos => pos.y)) - 100;
+  const maxY = Math.max(...positions.map(pos => pos.y)) + 200;
+  
+  const canvasWidth = Math.max(1400, maxX - minX);
+  const canvasHeight = Math.max(1000, maxY - minY);
 
   return (
     <div className="relative w-full h-full overflow-hidden bg-gray-50">
