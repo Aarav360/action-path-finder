@@ -1,17 +1,24 @@
-
 import React, { useEffect, useRef } from 'react';
 import { useTreeLearning } from '@/contexts/TreeLearningContext';
 import { Button } from '@/components/ui/button';
 import { Plus } from 'lucide-react';
 
-export const TreeView = () => {
+interface TreeViewProps {
+  onNodeSelect?: (nodeId: string) => void;
+}
+
+export const TreeView = ({ onNodeSelect }: TreeViewProps) => {
   const { nodes, selectedNodeId, selectNode, createChildNodes } = useTreeLearning();
   const svgRef = useRef<SVGSVGElement>(null);
 
   const nodeEntries = Object.entries(nodes);
 
   const handleNodeClick = (nodeId: string) => {
-    selectNode(nodeId);
+    if (onNodeSelect) {
+      onNodeSelect(nodeId);
+    } else {
+      selectNode(nodeId);
+    }
   };
 
   const handleCreateChildren = (nodeId: string) => {
@@ -42,14 +49,18 @@ export const TreeView = () => {
 
   if (nodeEntries.length === 0) {
     return (
-      <div className="flex items-center justify-center h-full text-gray-500">
-        <p>Start a conversation to begin building your knowledge tree</p>
+      <div className="flex items-center justify-center h-full text-gray-500 bg-gray-50">
+        <div className="text-center">
+          <h2 className="text-2xl font-semibold text-gray-700 mb-4">Welcome to Tree Learning Mode</h2>
+          <p className="text-gray-500 mb-2">Start a conversation in Classic Mode to begin building your knowledge tree</p>
+          <p className="text-sm text-gray-400">Or create your first learning concept to get started</p>
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="relative w-full h-full overflow-auto">
+    <div className="relative w-full h-full overflow-auto bg-gray-50">
       <svg
         ref={svgRef}
         className="absolute inset-0 w-full h-full"
@@ -79,7 +90,7 @@ export const TreeView = () => {
               <div className={`p-2 rounded-md text-sm font-medium transition-colors ${
                 selectedNodeId === nodeId 
                   ? 'bg-blue-100 text-blue-900' 
-                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                  : 'bg-white text-gray-700 hover:bg-gray-100 shadow-sm border border-gray-200'
               }`}>
                 {node.title}
               </div>
@@ -95,7 +106,7 @@ export const TreeView = () => {
                 <Button
                   size="sm"
                   variant="outline"
-                  className="w-8 h-8 p-0"
+                  className="w-8 h-8 p-0 bg-white shadow-sm"
                   onClick={() => handleCreateChildren(nodeId)}
                 >
                   <Plus className="w-4 h-4" />

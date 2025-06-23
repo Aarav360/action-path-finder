@@ -1,13 +1,16 @@
-
 import React, { useState } from 'react';
 import { useTreeLearning } from '@/contexts/TreeLearningContext';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card } from '@/components/ui/card';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Send } from 'lucide-react';
+import { Send, X } from 'lucide-react';
 
-export const NodeChat = () => {
+interface NodeChatProps {
+  onClose?: () => void;
+}
+
+export const NodeChat = ({ onClose }: NodeChatProps) => {
   const { nodes, selectedNodeId, sendMessage, isLoading } = useTreeLearning();
   const [input, setInput] = useState('');
 
@@ -40,9 +43,21 @@ export const NodeChat = () => {
 
   return (
     <div className="flex flex-col h-full">
-      <div className="border-b p-4">
-        <h3 className="font-semibold text-lg">{selectedNode.title}</h3>
-        <p className="text-sm text-gray-600 mt-1">Level {selectedNode.level + 1} • Context inherited from parent nodes</p>
+      <div className="border-b border-gray-200 px-6 py-4 flex items-center justify-between">
+        <div>
+          <h3 className="font-semibold text-lg text-gray-900">{selectedNode.title}</h3>
+          <p className="text-sm text-gray-600 mt-1">Level {selectedNode.level + 1} • Context inherited from parent nodes</p>
+        </div>
+        {onClose && (
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={onClose}
+            className="h-8 w-8"
+          >
+            <X className="h-4 w-4" />
+          </Button>
+        )}
       </div>
 
       <ScrollArea className="flex-1 p-4">
@@ -90,7 +105,7 @@ export const NodeChat = () => {
         </div>
       </ScrollArea>
 
-      <div className="border-t p-4">
+      <div className="border-t border-gray-200 p-4">
         <div className="flex gap-2">
           <Input
             placeholder="Ask about this concept..."
